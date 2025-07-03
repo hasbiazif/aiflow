@@ -1,0 +1,6 @@
+apache-airflow[postgres]==2.7.2
+psycopg2-binary
+sqlalchemy
+requests
+pandas
+openpyxl

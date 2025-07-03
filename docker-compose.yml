@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:  # Bagian yang ditambahkan
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Direkomendasikan untuk debugging
+
+  airflow:
+    image: apache/airflow:2.7.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW_HOME: /opt/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'supersecretkey'  # Ditambahkan
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - ./include:/opt/airflow/include 
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c '
+      until airflow db check; do
+        echo "Waiting for database...";
+        sleep 5;
+      done;
+      airflow db init;
+      airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email admin@example.com;
+      airflow scheduler & airflow webserver
+      '
+volumes:
+  postgres_data:
